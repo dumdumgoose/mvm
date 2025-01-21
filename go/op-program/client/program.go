@@ -455,25 +455,55 @@ func collectEnqueueTx(logger log.Logger, rollupCfg *chainconfig.RollupConfig, ch
 }
 
 func collectMissingEnqueueTx(logger log.Logger, l2ChainID *big.Int, rollupCfg *chainconfig.RollupConfig, lastL1Head *ethtypes.Header, l2Blocks []*types.Block, collectedEarliestEnqueue int64, collectedEnqueueTxs map[uint64]*rollup.Enqueue, l1Oracle l1.Oracle) error {
-	earliestEnqueueTx := int64(-1)
-	earliestEnqueueTxBlock := uint64(0)
+	var (
+		earliestEnqueueTx      = int64(-1)
+		lastEnqueueTx          = int64(-1)
+		earliestEnqueueTxBlock = uint64(0)
+		lastEnqueueTxBlock     = uint64(0)
+	)
 
 	// find the first enqueue tx in the l2 blocks
+	found := false
 	for _, l2Block := range l2Blocks {
 		for _, tx := range l2Block.Transactions() {
 			if tx.QueueOrigin() == types.QueueOriginL1ToL2 {
 				earliestEnqueueTx = int64(*tx.GetMeta().QueueIndex)
 				earliestEnqueueTxBlock = tx.GetMeta().L1BlockNumber.Uint64()
+				found = true
 				break
 			}
+		}
+		if found {
+			break
+		}
+	}
+
+	// find the last enqueue tx in the l2 blocks, searching backward
+	found = false
+	for i := len(l2Blocks) - 1; i >= 0; i-- {
+		l2Block := l2Blocks[i]
+		for j := len(l2Block.Transactions()) - 1; j >= 0; j-- {
+			tx := l2Block.Transactions()[j]
+			if tx.QueueOrigin() == types.QueueOriginL1ToL2 {
+				lastEnqueueTx = int64(*tx.GetMeta().QueueIndex)
+				lastEnqueueTxBlock = tx.GetMeta().L1BlockNumber.Uint64()
+				found = true
+				break
+			}
+		}
+		if found {
+			break
 		}
 	}
 
 	logger.Info("Checking if there is any missing enqueue tx", "batchEarliest", earliestEnqueueTx, "collected", collectedEarliestEnqueue)
 
-	// no collected anything yet, we need to collect at least 1 enqueue tx
 	if collectedEarliestEnqueue < 0 {
-		collectedEarliestEnqueue = earliestEnqueueTx + 1
+		collectedEarliestEnqueue = lastEnqueueTx + 1
+		if lastEnqueueTxBlock > lastL1Head.Number.Uint64() {
+			return fmt.Errorf("last enqueue tx block %d is greater than last L1 block %d, there are gaps in enqueue",
+				lastEnqueueTxBlock, lastL1Head.Number.Uint64())
+		}
 	}
 
 	if earliestEnqueueTx < 0 || earliestEnqueueTx >= collectedEarliestEnqueue {
