@@ -16,9 +16,6 @@
 
 // geth is the official command-line client for Ethereum.
 
-//go:build cgo
-// +build cgo
-
 package main
 
 import (
