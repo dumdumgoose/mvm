@@ -3,13 +3,16 @@ package testutil
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
+	"path"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/solc"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 
 	"github.com/MetisProtocol/mvm/l2geth/common"
 	"github.com/MetisProtocol/mvm/l2geth/consensus"
@@ -23,8 +26,8 @@ import (
 )
 
 type Artifacts struct {
-	MIPS   *foundry.Artifact
-	Oracle *foundry.Artifact
+	MIPS   *Artifact
+	Oracle *Artifact
 }
 
 type Addresses struct {
@@ -37,6 +40,13 @@ type Addresses struct {
 type ContractMetadata struct {
 	Artifacts *Artifacts
 	Addresses *Addresses
+}
+
+type Artifact struct {
+	ABI              json.RawMessage    `json:"abi"`
+	StorageLayout    solc.StorageLayout `json:"storageLayout"`
+	DeployedBytecode hexutil.Bytes      `json:"deployedBytecode"`
+	Bytecode         hexutil.Bytes      `json:"bytecode"`
 }
 
 func TestContractsSetup(t require.TestingT, version MipsVersion) *ContractMetadata {
@@ -53,16 +63,34 @@ func TestContractsSetup(t require.TestingT, version MipsVersion) *ContractMetada
 	return &ContractMetadata{Artifacts: artifacts, Addresses: addrs}
 }
 
+func loadArtifact(name, contract string) (*Artifact, error) {
+	artifactFS := "../../../../packages/contracts/artifacts/contracts"
+	artifactPath := path.Join(artifactFS, name, contract+".json")
+
+	artifactFile, err := os.Open(artifactPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open artifact file: %w", err)
+	}
+
+	dec := json.NewDecoder(artifactFile)
+
+	var artifact Artifact
+	if err := dec.Decode(&artifact); err != nil {
+		return nil, fmt.Errorf("failed to decode artifact: %w", err)
+	}
+
+	return &artifact, nil
+}
+
 // loadArtifacts loads the Cannon contracts, from the contracts package.
 func loadArtifacts(version MipsVersion) (*Artifacts, error) {
-	artifactFS := foundry.OpenArtifactsDir("../../../packages/contracts-bedrock/forge-artifacts")
-	var mips *foundry.Artifact
+	var mips *Artifact
 	var err error
 	switch version {
 	case MipsSingleThreaded:
-		mips, err = artifactFS.ReadArtifact("MIPS.sol", "MIPS")
+		mips, err = loadArtifact("L1/cannon/MIPS.sol", "MIPS")
 	case MipsMultithreaded:
-		mips, err = artifactFS.ReadArtifact("MIPS2.sol", "MIPS2")
+		mips, err = loadArtifact("L1/cannon/MIPS2.sol", "MIPS2")
 	default:
 		return nil, fmt.Errorf("Unknown MipsVersion supplied: %v", version)
 	}
@@ -70,7 +98,7 @@ func loadArtifacts(version MipsVersion) (*Artifacts, error) {
 		return nil, err
 	}
 
-	oracle, err := artifactFS.ReadArtifact("PreimageOracle.sol", "PreimageOracle")
+	oracle, err := loadArtifact("L1/cannon/PreimageOracle.sol", "PreimageOracle")
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +139,11 @@ func NewEVMEnv(contracts *ContractMetadata) (*vm.EVM, *state.StateDB) {
 
 	env := vm.NewEVM(evmContext, state, chainCfg, vmCfg)
 	// pre-deploy the contracts
-	env.StateDB.SetCode(contracts.Addresses.Oracle, contracts.Artifacts.Oracle.DeployedBytecode.Object)
+	env.StateDB.SetCode(contracts.Addresses.Oracle, contracts.Artifacts.Oracle.DeployedBytecode)
 
 	var mipsCtorArgs [32]byte
 	copy(mipsCtorArgs[12:], contracts.Addresses.Oracle[:])
-	mipsDeploy := append(bytes.Clone(contracts.Artifacts.MIPS.Bytecode.Object), mipsCtorArgs[:]...)
+	mipsDeploy := append(bytes.Clone(contracts.Artifacts.MIPS.Bytecode), mipsCtorArgs[:]...)
 	startingGas := uint64(30_000_000)
 	_, deployedMipsAddr, leftOverGas, err := env.Create(vm.AccountRef(contracts.Addresses.Sender), mipsDeploy, startingGas, big.NewInt(0))
 	if err != nil {

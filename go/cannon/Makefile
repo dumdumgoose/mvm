@@ -22,7 +22,10 @@ clean:
 elf:
 	make -C ./testdata/example elf
 
-test: elf
+contract:
+	cd ../../packages/contracts && yarn build
+
+test: elf contract
 	go test -v ./...
 
 fuzz:

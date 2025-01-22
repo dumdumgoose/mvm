@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,11 +11,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/MetisProtocol/mvm/l2geth/accounts/abi"
 	"github.com/MetisProtocol/mvm/l2geth/common"
 	"github.com/MetisProtocol/mvm/l2geth/core/state"
 	"github.com/MetisProtocol/mvm/l2geth/core/vm"
-
-	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 
 	"github.com/ethereum-optimism/optimism/go/cannon/mipsevm"
 	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
@@ -87,15 +87,25 @@ func (m *MIPSEVM) Step(t *testing.T, stepWitness *mipsevm.StepWitness, step uint
 	return evmPost
 }
 
-func EncodeStepInput(t *testing.T, wit *mipsevm.StepWitness, localContext mipsevm.LocalContext, mips *foundry.Artifact) []byte {
-	input, err := mips.ABI.Pack("step", wit.State, wit.ProofData, localContext)
+func EncodeStepInput(t *testing.T, wit *mipsevm.StepWitness, localContext mipsevm.LocalContext, mips *Artifact) []byte {
+	abiCoder, err := abi.JSON(bytes.NewBuffer(mips.ABI))
+	if err != nil {
+		t.Fatalf("failed to create ABI coder: %v", err)
+	}
+
+	input, err := abiCoder.Pack("step", wit.State, wit.ProofData, localContext)
 	require.NoError(t, err)
 	return input
 }
 
-func EncodePreimageOracleInput(t *testing.T, wit *mipsevm.StepWitness, localContext mipsevm.LocalContext, localOracle mipsevm.PreimageOracle, oracle *foundry.Artifact) ([]byte, error) {
+func EncodePreimageOracleInput(t *testing.T, wit *mipsevm.StepWitness, localContext mipsevm.LocalContext, localOracle mipsevm.PreimageOracle, oracle *Artifact) ([]byte, error) {
 	if wit.PreimageKey == ([32]byte{}) {
 		return nil, errors.New("cannot encode pre-image oracle input, witness has no pre-image to proof")
+	}
+
+	abiCoder, err := abi.JSON(bytes.NewBuffer(oracle.ABI))
+	if err != nil {
+		t.Fatalf("failed to create ABI coder: %v", err)
 	}
 
 	switch preimage.KeyType(wit.PreimageKey[0]) {
@@ -106,7 +116,7 @@ func EncodePreimageOracleInput(t *testing.T, wit *mipsevm.StepWitness, localCont
 		preimagePart := wit.PreimageValue[8:]
 		var tmp [32]byte
 		copy(tmp[:], preimagePart)
-		input, err := oracle.ABI.Pack("loadLocalData",
+		input, err := abiCoder.Pack("loadLocalData",
 			new(big.Int).SetBytes(wit.PreimageKey[1:]),
 			localContext,
 			tmp,
@@ -116,7 +126,7 @@ func EncodePreimageOracleInput(t *testing.T, wit *mipsevm.StepWitness, localCont
 		require.NoError(t, err)
 		return input, nil
 	case preimage.Keccak256KeyType:
-		input, err := oracle.ABI.Pack(
+		input, err := abiCoder.Pack(
 			"loadKeccak256PreimagePart",
 			new(big.Int).SetUint64(uint64(wit.PreimageOffset)),
 			wit.PreimageValue[8:])
@@ -130,7 +140,7 @@ func EncodePreimageOracleInput(t *testing.T, wit *mipsevm.StepWitness, localCont
 		precompile := common.BytesToAddress(preimage[:20])
 		requiredGas := binary.BigEndian.Uint64(preimage[20:28])
 		callInput := preimage[28:]
-		input, err := oracle.ABI.Pack(
+		input, err := abiCoder.Pack(
 			"loadPrecompilePreimagePart",
 			new(big.Int).SetUint64(uint64(wit.PreimageOffset)),
 			precompile,
