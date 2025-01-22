@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -41,7 +40,7 @@ func TestRollupConfig(t *testing.T) {
 		config := validConfig()
 		config.Rollup = &chainconfig.RollupConfig{}
 		err := config.Check()
-		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
+		require.Contains(t, err.Error(), "missing L1ChainId")
 	})
 }
 

@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetisProtocol/mvm/l2geth/common"
@@ -41,7 +40,7 @@ func TestGet(t *testing.T) {
 		prefixedKey := key.Bytes()
 
 		expected := []byte{1, 2, 3}
-		oracle.Code[key] = expected
+		oracle.Data[key] = expected
 		val, err := db.Get(prefixedKey)
 
 		require.NoError(t, err)
@@ -174,7 +173,7 @@ func assertStateDataAvailable(t *testing.T, db l2db.KeyValueStore, l2Genesis *co
 	require.NoError(t, err)
 
 	for address, account := range l2Genesis.Alloc {
-		require.Equal(t, uint256.MustFromBig(account.Balance), statedb.GetBalance(address))
+		require.Equal(t, account.Balance, statedb.GetBalance(address))
 		require.Equal(t, account.Nonce, statedb.GetNonce(address))
 		require.Equal(t, common.BytesToHash(crypto.Keccak256(account.Code)), statedb.GetCodeHash(address))
 		require.Equal(t, account.Code, statedb.GetCode(address))
@@ -183,7 +182,7 @@ func assertStateDataAvailable(t *testing.T, db l2db.KeyValueStore, l2Genesis *co
 		}
 	}
 	require.Equal(t, common.Hash{}, statedb.GetState(codeAccount, common.HexToHash("0x99")), "retrieve unset storage key")
-	require.Equal(t, uint256.NewInt(0), statedb.GetBalance(unknownAccount), "unset account balance")
+	require.Equal(t, big.NewInt(0), statedb.GetBalance(unknownAccount), "unset account balance")
 	require.Equal(t, uint64(0), statedb.GetNonce(unknownAccount), "unset account balance")
 	require.Nil(t, statedb.GetCode(unknownAccount), "unset account code")
 	require.Equal(t, common.Hash{}, statedb.GetCodeHash(unknownAccount), "unset account code hash")

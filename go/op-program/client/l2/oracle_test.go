@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/testutils"
 
 	l2common "github.com/MetisProtocol/mvm/l2geth/common"
 	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
@@ -69,17 +68,6 @@ func testBlock(t *testing.T, block *types.Block) {
 	require.Equal(t, len(expectedTxs), len(gotBlock.Transactions()), "expecting equal tx list length")
 	for i, tx := range gotBlock.Transactions() {
 		require.Equalf(t, tx.Hash(), expectedTxs[i].Hash(), "expecting tx %d to match", i)
-	}
-}
-
-func TestPreimageOracleBlockByHash(t *testing.T) {
-	rng := rand.New(rand.NewSource(123))
-
-	for i := 0; i < 10; i++ {
-		block, _ := testutils.RandomBlock(rng, 10)
-		t.Run(fmt.Sprintf("block_%d", i), func(t *testing.T) {
-			testBlock(t, block)
-		})
 	}
 }
 

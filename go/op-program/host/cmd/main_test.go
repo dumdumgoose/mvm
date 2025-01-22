@@ -6,15 +6,14 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 
+	"github.com/MetisProtocol/mvm/l2geth/core"
 	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/go/op-program/host/config"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -26,8 +25,8 @@ var (
 	l2ClaimValue       = common.HexToHash("0x333333").Hex()
 	l2OutputRoot       = common.HexToHash("0x444444").Hex()
 	l2ClaimBlockNumber = uint64(1203)
-	// Note: This is actually the L1 Sepolia genesis config. Just using it as an arbitrary, valid genesis config
-	l2Genesis       = core.DefaultSepoliaGenesisBlock()
+	// Note: This is actually the L1 genesis config. Just using it as an arbitrary, valid genesis config
+	l2Genesis       = core.DefaultGenesisBlock()
 	l2GenesisConfig = l2Genesis.Config
 )
 
@@ -81,7 +80,7 @@ func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 
 func TestNetwork(t *testing.T) {
 	t.Run("Unknown", func(t *testing.T) {
-		verifyArgsInvalid(t, "invalid network: \"bar\"", replaceRequiredArg("--network", "bar"))
+		verifyArgsInvalid(t, "flag l2.genesis is required for network bar", replaceRequiredArg("--network", "bar"))
 	})
 
 	t.Run("Required", func(t *testing.T) {
@@ -97,12 +96,12 @@ func TestNetwork(t *testing.T) {
 		genesisFile := writeValidGenesis(t)
 
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", configFile, "--l2.genesis", genesisFile))
-		require.Equal(t, *chaincfg.Sepolia, *cfg.Rollup)
+		require.Equal(t, *chainconfig.MetisSepoliaRollupConfig, *cfg.Rollup)
 	})
 
-	for _, name := range chaincfg.AvailableNetworks() {
+	for _, name := range chainconfig.AvailableNetworks() {
 		name := name
-		expected, err := chaincfg.GetRollupConfig(name)
+		expected, err := chainconfig.RollupConfigByChainID(chainconfig.ChainByName(name).ChainID.Uint64())
 		require.NoError(t, err)
 		t.Run("Network_"+name, func(t *testing.T) {
 			args := replaceRequiredArg("--network", name)
@@ -371,7 +370,7 @@ func writeValidGenesis(t *testing.T) string {
 
 func writeValidRollupConfig(t *testing.T) string {
 	dir := t.TempDir()
-	j, err := json.Marshal(chaincfg.Sepolia)
+	j, err := json.Marshal(chainconfig.MetisSepoliaRollupConfig)
 	require.NoError(t, err)
 	cfgFile := dir + "/rollup.json"
 	require.NoError(t, os.WriteFile(cfgFile, j, 0666))

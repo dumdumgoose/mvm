@@ -148,7 +148,7 @@ func TestMultipleTraceTypes(t *testing.T) {
 
 func TestGameFactoryAddress(t *testing.T) {
 	t.Run("RequiredWhenNetworkNotSupplied", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag game-factory-address is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address"))
+		verifyArgsInvalid(t, "flag game-factory-address or network is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {

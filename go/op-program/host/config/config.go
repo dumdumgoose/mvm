@@ -74,6 +74,9 @@ func (c *Config) Check() error {
 	if c.Rollup == nil {
 		return ErrMissingRollupConfig
 	}
+	if err := c.Rollup.Check(); err != nil {
+		return err
+	}
 	if c.L1Head == (common.Hash{}) {
 		return ErrInvalidL1Head
 	}
@@ -120,6 +123,7 @@ func NewConfig(
 	isCustomConfig := err != nil
 
 	return &Config{
+		RollupURL:           "http://localhost:7878",
 		Rollup:              rollupCfg,
 		L2ChainConfig:       l2Genesis,
 		L1Head:              l1Head,

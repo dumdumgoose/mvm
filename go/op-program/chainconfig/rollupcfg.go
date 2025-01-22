@@ -1,6 +1,7 @@
 package chainconfig
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/MetisProtocol/mvm/l2geth/common"
@@ -24,6 +25,28 @@ type RollupConfig struct {
 	// since this data must be static, it's better to sort it before using instead of sorting it in the program.
 	TxChainBatcherAddresses []BatcherAddressAtHeight `json:"txChainBatcherAddresses"`
 	BlobBatcherAddresses    []BatcherAddressAtHeight `json:"blobBatcherAddresses"`
+}
+
+func (c RollupConfig) Check() error {
+	if c.L1ChainId == nil {
+		return errors.New("missing L1ChainId")
+	}
+	if c.InboxAddress == (common.Address{}) {
+		return errors.New("missing InboxAddress")
+	}
+	if c.SCCAddress == (common.Address{}) {
+		return errors.New("missing SCCAddress")
+	}
+	if c.CTCAddress == (common.Address{}) {
+		return errors.New("missing CTCAddress")
+	}
+	if len(c.TxChainBatcherAddresses) == 0 {
+		return errors.New("missing TxChainBatcherAddresses")
+	}
+	if len(c.BlobBatcherAddresses) == 0 {
+		return errors.New("missing BlobBatcherAddresses")
+	}
+	return nil
 }
 
 var (
