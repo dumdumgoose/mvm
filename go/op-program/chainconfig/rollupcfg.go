@@ -25,3 +25,32 @@ type RollupConfig struct {
 	TxChainBatcherAddresses []BatcherAddressAtHeight `json:"txChainBatcherAddresses"`
 	BlobBatcherAddresses    []BatcherAddressAtHeight `json:"blobBatcherAddresses"`
 }
+
+var (
+	MetisSepoliaRollupConfig = &RollupConfig{
+		L1ChainId:    big.NewInt(11155111),
+		InboxAddress: common.HexToAddress("0xFf00000000000000000000000001115511159902"),
+		SCCAddress:   common.HexToAddress("0x9DCC53737FcB3E86a17CF435ca3c15390D4FC7Ed"),
+		CTCAddress:   common.HexToAddress("0x5435d351e0aCc874579eC67Ba46440ee6AC892b8"),
+		TxChainBatcherAddresses: []BatcherAddressAtHeight{
+			{
+				Height:  5536996,
+				Address: common.HexToAddress("0x578c88EeEe23Db03E70aDB2445F0043bEC3C416E"),
+			},
+		},
+		BlobBatcherAddresses: []BatcherAddressAtHeight{},
+	}
+	MetisAndromedaRollupConfig = &RollupConfig{
+		L1ChainId:    big.NewInt(11155111),
+		InboxAddress: common.HexToAddress("0xFf00000000000000000000000000000000001088"),
+		SCCAddress:   common.HexToAddress("0xA2FaAAC9120c1Ff75814F0c6DdB119496a12eEA6"),
+		CTCAddress:   common.HexToAddress("0x56a76bcC92361f6DF8D75476feD8843EdC70e1C9"),
+		TxChainBatcherAddresses: []BatcherAddressAtHeight{
+			{
+				Height:  19439547,
+				Address: common.HexToAddress("0x1A9da0aedA630dDf2748a453BF6d92560762D914"),
+			},
+		},
+		BlobBatcherAddresses: []BatcherAddressAtHeight{},
+	}
+)

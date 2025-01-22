@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/superchain-registry/superchain"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,6 +35,7 @@ var (
 	asteriscBin             = "./bin/asterisc"
 	asteriscServer          = "./bin/op-program"
 	asteriscPreState        = "./pre.json"
+	sccAddress              = "0x0000000000000000000000000000000000000000"
 )
 
 func TestLogLevel(t *testing.T) {
@@ -55,12 +55,12 @@ func TestLogLevel(t *testing.T) {
 
 func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	cfg := configForArgs(t, addRequiredArgs(types.TraceTypeAlphabet))
-	defaultCfg := config.NewConfig(common.HexToAddress(gameFactoryAddressValue), l1EthRpc, l1Beacon, rollupRpc, l2EthRpc, datadir, types.TraceTypeAlphabet)
+	defaultCfg := config.NewConfig(common.HexToAddress(gameFactoryAddressValue), common.Address{}, l1EthRpc, l1Beacon, rollupRpc, l2EthRpc, datadir, false, types.TraceTypeAlphabet)
 	require.Equal(t, defaultCfg, cfg)
 }
 
 func TestDefaultConfigIsValid(t *testing.T) {
-	cfg := config.NewConfig(common.HexToAddress(gameFactoryAddressValue), l1EthRpc, l1Beacon, rollupRpc, l2EthRpc, datadir, types.TraceTypeAlphabet)
+	cfg := config.NewConfig(common.HexToAddress(gameFactoryAddressValue), common.Address{}, l1EthRpc, l1Beacon, rollupRpc, l2EthRpc, datadir, false, types.TraceTypeAlphabet)
 	require.NoError(t, cfg.Check())
 }
 
@@ -148,7 +148,7 @@ func TestMultipleTraceTypes(t *testing.T) {
 
 func TestGameFactoryAddress(t *testing.T) {
 	t.Run("RequiredWhenNetworkNotSupplied", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag game-factory-address or network is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address"))
+		verifyArgsInvalid(t, "flag game-factory-address is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -165,18 +165,6 @@ func TestGameFactoryAddress(t *testing.T) {
 		addr := common.Address{0xbb, 0xcc, 0xdd}
 		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--game-factory-address", addr.Hex(), "--network", "op-sepolia"))
 		require.Equal(t, addr, cfg.GameFactoryAddress)
-	})
-}
-
-func TestNetwork(t *testing.T) {
-	t.Run("Valid", func(t *testing.T) {
-		opSepoliaChainId := uint64(11155420)
-		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--network=op-sepolia"))
-		require.EqualValues(t, superchain.Addresses[opSepoliaChainId].DisputeGameFactoryProxy, cfg.GameFactoryAddress)
-	})
-
-	t.Run("UnknownNetwork", func(t *testing.T) {
-		verifyArgsInvalid(t, "unknown chain: not-a-network", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--network=not-a-network"))
 	})
 }
 
@@ -428,15 +416,6 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 					"--asterisc-rollup-config=rollup.json", "--asterisc-l2-genesis=genesis.json"))
 			})
 
-			t.Run("NotRequiredWhenNetworkSpecified", func(t *testing.T) {
-				args := requiredArgs(traceType)
-				delete(args, "--asterisc-network")
-				delete(args, "--game-factory-address")
-				args["--network"] = "op-sepolia"
-				cfg := configForArgs(t, toArgList(args))
-				require.Equal(t, "op-sepolia", cfg.Asterisc.Network)
-			})
-
 			t.Run("MustNotSpecifyNetworkAndAsteriscNetwork", func(t *testing.T) {
 				verifyArgsInvalid(t, "flag asterisc-network can not be used with network",
 					addRequiredArgsExcept(traceType, "--game-factory-address", "--network", "op-sepolia"))
@@ -652,10 +631,9 @@ func TestCannonRequiredArgs(t *testing.T) {
 			t.Run("NotRequiredWhenNetworkSpecified", func(t *testing.T) {
 				args := requiredArgs(traceType)
 				delete(args, "--cannon-network")
-				delete(args, "--game-factory-address")
-				args["--network"] = "op-sepolia"
+				args["--network"] = "metis-sepolia"
 				cfg := configForArgs(t, toArgList(args))
-				require.Equal(t, "op-sepolia", cfg.Cannon.Network)
+				require.Equal(t, "metis-sepolia", cfg.Cannon.Network)
 			})
 
 			t.Run("MustNotSpecifyNetworkAndCannonNetwork", func(t *testing.T) {
@@ -848,6 +826,7 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 		"--game-factory-address": gameFactoryAddressValue,
 		"--trace-type":           traceType.String(),
 		"--datadir":              datadir,
+		"--scc-address":          sccAddress,
 	}
 	switch traceType {
 	case types.TraceTypeCannon, types.TraceTypePermissioned:

@@ -3,6 +3,7 @@ package solver
 import (
 	"testing"
 
+	faulttypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/mon"
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/mon/transform"
 	disputeTypes "github.com/ethereum-optimism/optimism/op-dispute-mon/mon/types"
@@ -84,7 +85,22 @@ func verifyChallengerNeverCountersAClaimTwice(t *testing.T, tree *disputeTypes.B
 func enrichClaims(claims []types.Claim) []disputeTypes.EnrichedClaim {
 	enriched := make([]disputeTypes.EnrichedClaim, len(claims))
 	for i, claim := range claims {
-		enriched[i] = disputeTypes.EnrichedClaim{Claim: claim}
+		enriched[i] = disputeTypes.EnrichedClaim{Claim: faulttypes.Claim{
+			ClaimData: faulttypes.ClaimData{
+				Value: claim.ClaimData.Value,
+				Bond:  claim.ClaimData.Bond,
+				Position: faulttypes.NewPosition(faulttypes.Depth(claim.ClaimData.Position.Depth()),
+					claim.ClaimData.Position.IndexAtDepth()),
+			},
+			CounteredBy: claim.CounteredBy,
+			Claimant:    claim.Claimant,
+			Clock: faulttypes.Clock{
+				Duration:  claim.Clock.Duration,
+				Timestamp: claim.Clock.Timestamp,
+			},
+			ContractIndex:       claim.ContractIndex,
+			ParentContractIndex: claim.ParentContractIndex,
+		}}
 	}
 	return enriched
 }
@@ -94,7 +110,22 @@ func gameResult(game types.Game) (gameTypes.GameStatus, *disputeTypes.Bidirectio
 	result := mon.Resolve(tree)
 	resolvedClaims := make([]types.Claim, 0, len(tree.Claims))
 	for _, claim := range tree.Claims {
-		resolvedClaims = append(resolvedClaims, *claim.Claim)
+		resolvedClaims = append(resolvedClaims, types.Claim{
+			ClaimData: types.ClaimData{
+				Value: claim.Claim.Value,
+				Bond:  claim.Claim.Bond,
+				Position: types.NewPosition(types.Depth(claim.Claim.Position.Depth()),
+					claim.Claim.Position.IndexAtDepth()),
+			},
+			CounteredBy: claim.Claim.CounteredBy,
+			Claimant:    claim.Claim.Claimant,
+			Clock: types.Clock{
+				Duration:  claim.Claim.Clock.Duration,
+				Timestamp: claim.Claim.Clock.Timestamp,
+			},
+			ContractIndex:       claim.Claim.ContractIndex,
+			ParentContractIndex: claim.Claim.ParentContractIndex,
+		})
 	}
-	return result, tree, types.NewGameState(resolvedClaims, game.MaxDepth())
+	return gameTypes.GameStatus(result), tree, types.NewGameState(resolvedClaims, game.MaxDepth())
 }

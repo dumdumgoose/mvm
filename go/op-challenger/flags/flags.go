@@ -5,25 +5,22 @@ import (
 	"net/url"
 	"runtime"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/flags"
-	"github.com/ethereum-optimism/superchain-registry/superchain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/trace/vm"
-	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/types"
-
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	openum "github.com/ethereum-optimism/optimism/op-service/enum"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
+
+	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/trace/vm"
+	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/types"
 
 	"github.com/ethereum-optimism/optimism/go/op-challenger/config"
 )
@@ -461,25 +458,6 @@ func FactoryAddress(ctx *cli.Context) (common.Address, error) {
 			return common.Address{}, err
 		}
 		return gameFactoryAddress, nil
-	}
-	if ctx.IsSet(flags.NetworkFlagName) {
-		chainName := ctx.String(flags.NetworkFlagName)
-		chainCfg := chaincfg.ChainByName(chainName)
-		if chainCfg == nil {
-			var opts []string
-			for _, cfg := range superchain.OPChains {
-				opts = append(opts, cfg.Chain+"-"+cfg.Superchain)
-			}
-			return common.Address{}, fmt.Errorf("unknown chain: %v (Valid options: %v)", chainName, strings.Join(opts, ", "))
-		}
-		addrs, ok := superchain.Addresses[chainCfg.ChainID]
-		if !ok {
-			return common.Address{}, fmt.Errorf("no addresses available for chain %v", chainName)
-		}
-		if addrs.DisputeGameFactoryProxy == (superchain.Address{}) {
-			return common.Address{}, fmt.Errorf("dispute factory proxy not available for chain %v", chainName)
-		}
-		return common.Address(addrs.DisputeGameFactoryProxy), nil
 	}
 	return common.Address{}, fmt.Errorf("flag %v or %v is required", FactoryAddressFlag.Name, flags.NetworkFlagName)
 }

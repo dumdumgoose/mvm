@@ -7,21 +7,23 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
+
+	l2common "github.com/MetisProtocol/mvm/l2geth/common"
+	"github.com/MetisProtocol/mvm/l2geth/core/types"
+	l2db "github.com/MetisProtocol/mvm/l2geth/ethdb"
 )
 
 // Same as l2.StateOracle but need to use our own copy to avoid dependency loops
 type stateOracle interface {
-	NodeByHash(nodeHash common.Hash) []byte
-	CodeByHash(codeHash common.Hash) []byte
+	NodeByHash(nodeHash l2common.Hash) []byte
+	CodeByHash(codeHash l2common.Hash) []byte
 }
 
 type StubBlockOracle struct {
 	t       *testing.T
-	Blocks  map[common.Hash]*types.Block
-	Outputs map[common.Hash]eth.Output
+	Blocks  map[l2common.Hash]*types.Block
+	Outputs map[l2common.Hash]eth.Output
 	stateOracle
 }
 
@@ -29,31 +31,18 @@ func NewStubOracle(t *testing.T) (*StubBlockOracle, *StubStateOracle) {
 	stateOracle := NewStubStateOracle(t)
 	blockOracle := StubBlockOracle{
 		t:           t,
-		Blocks:      make(map[common.Hash]*types.Block),
-		Outputs:     make(map[common.Hash]eth.Output),
+		Blocks:      make(map[l2common.Hash]*types.Block),
+		Outputs:     make(map[l2common.Hash]eth.Output),
 		stateOracle: stateOracle,
 	}
 	return &blockOracle, stateOracle
 }
 
-func NewStubOracleWithBlocks(t *testing.T, chain []*types.Block, outputs []eth.Output, db ethdb.Database) *StubBlockOracle {
-	blocks := make(map[common.Hash]*types.Block, len(chain))
-	for _, block := range chain {
-		blocks[block.Hash()] = block
-	}
-	o := make(map[common.Hash]eth.Output, len(outputs))
-	for _, output := range outputs {
-		o[common.Hash(eth.OutputRoot(output))] = output
-	}
-	return &StubBlockOracle{
-		t:           t,
-		Blocks:      blocks,
-		Outputs:     o,
-		stateOracle: &KvStateOracle{t: t, Source: db},
-	}
+func (o StubBlockOracle) NodeByHash(nodeHash l2common.Hash) []byte {
+	return o.stateOracle.NodeByHash(nodeHash)
 }
 
-func (o StubBlockOracle) BlockByHash(blockHash common.Hash) *types.Block {
+func (o StubBlockOracle) BlockByHash(blockHash l2common.Hash) *types.Block {
 	block, ok := o.Blocks[blockHash]
 	if !ok {
 		o.t.Fatalf("requested unknown block %s", blockHash)
@@ -61,28 +50,20 @@ func (o StubBlockOracle) BlockByHash(blockHash common.Hash) *types.Block {
 	return block
 }
 
-func (o StubBlockOracle) OutputByRoot(root common.Hash) eth.Output {
-	output, ok := o.Outputs[root]
-	if !ok {
-		o.t.Fatalf("requested unknown output root %s", root)
-	}
-	return output
-}
-
 // KvStateOracle loads data from a source ethdb.KeyValueStore
 type KvStateOracle struct {
 	t      *testing.T
-	Source ethdb.KeyValueStore
+	Source l2db.KeyValueStore
 }
 
-func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
+func NewKvStateOracle(t *testing.T, db l2db.KeyValueStore) *KvStateOracle {
 	return &KvStateOracle{
 		t:      t,
 		Source: db,
 	}
 }
 
-func (o *KvStateOracle) NodeByHash(nodeHash common.Hash) []byte {
+func (o *KvStateOracle) NodeByHash(nodeHash l2common.Hash) []byte {
 	val, err := o.Source.Get(nodeHash.Bytes())
 	if err != nil {
 		o.t.Fatalf("error retrieving node %v: %v", nodeHash, err)
@@ -90,26 +71,26 @@ func (o *KvStateOracle) NodeByHash(nodeHash common.Hash) []byte {
 	return val
 }
 
-func (o *KvStateOracle) CodeByHash(hash common.Hash) []byte {
-	return rawdb.ReadCode(o.Source, hash)
+func (o *KvStateOracle) CodeByHash(hash l2common.Hash) []byte {
+	return rawdb.ReadCode(o.Source, common.Hash(hash))
 }
 
 func NewStubStateOracle(t *testing.T) *StubStateOracle {
 	return &StubStateOracle{
 		t:    t,
-		Data: make(map[common.Hash][]byte),
-		Code: make(map[common.Hash][]byte),
+		Data: make(map[l2common.Hash][]byte),
+		Code: make(map[l2common.Hash][]byte),
 	}
 }
 
 // StubStateOracle is a StateOracle implementation that reads from simple maps
 type StubStateOracle struct {
 	t    *testing.T
-	Data map[common.Hash][]byte
-	Code map[common.Hash][]byte
+	Data map[l2common.Hash][]byte
+	Code map[l2common.Hash][]byte
 }
 
-func (o *StubStateOracle) NodeByHash(nodeHash common.Hash) []byte {
+func (o *StubStateOracle) NodeByHash(nodeHash l2common.Hash) []byte {
 	data, ok := o.Data[nodeHash]
 	if !ok {
 		o.t.Fatalf("no value for node %v", nodeHash)
@@ -117,7 +98,7 @@ func (o *StubStateOracle) NodeByHash(nodeHash common.Hash) []byte {
 	return data
 }
 
-func (o *StubStateOracle) CodeByHash(hash common.Hash) []byte {
+func (o *StubStateOracle) CodeByHash(hash l2common.Hash) []byte {
 	data, ok := o.Code[hash]
 	if !ok {
 		o.t.Fatalf("no value for code %v", hash)

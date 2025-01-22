@@ -62,7 +62,7 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, generator.generated, 7000, "should have tried to generate the proof")
 		_, stateHash := generator.finalState.EncodeWitness()
-		require.Equal(t, stateHash, value)
+		require.Equal(t, stateHash.Hex(), value.Hex())
 	})
 
 	t.Run("MissingPostHash", func(t *testing.T) {

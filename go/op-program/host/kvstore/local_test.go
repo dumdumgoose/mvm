@@ -5,22 +5,22 @@ import (
 	"encoding/json"
 	"testing"
 
-	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
-	"github.com/ethereum-optimism/optimism/go/op-program/host/config"
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
+
+	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
+	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/go/op-program/host/config"
 )
 
 func TestLocalPreimageSource(t *testing.T) {
 	cfg := &config.Config{
-		Rollup:             chaincfg.Sepolia,
+		Rollup:             chainconfig.MetisSepoliaRollupConfig,
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1234,
-		L2ChainConfig:      params.GoerliChainConfig,
+		L2ChainConfig:      chainconfig.MetisSepoliaChainConfig,
 	}
 	source := NewLocalPreimageSource(cfg)
 	tests := []struct {

@@ -55,45 +55,14 @@ var (
 	}
 )
 
-var (
-	MetisSepoliaRollupConfig = &RollupConfig{
-		L1ChainId:    big.NewInt(11155111),
-		InboxAddress: common.HexToAddress("0xFf00000000000000000000000001115511159902"),
-		TxChainBatcherAddresses: []BatcherAddressAtHeight{
-			{
-				Height:  0,
-				Address: common.HexToAddress("0x578c88EeEe23Db03E70aDB2445F0043bEC3C416E"),
-			},
-		},
-		BlobBatcherAddresses: []BatcherAddressAtHeight{
-			{
-				Height:  0,
-				Address: common.HexToAddress("0x578c88EeEe23Db03E70aDB2445F0043bEC3C416E"),
-			},
-		},
-	}
-
-	MetisAndromedaRollupConfig = &RollupConfig{
-		L1ChainId:    big.NewInt(11155111),
-		InboxAddress: common.HexToAddress("0xFf00000000000000000000000000000000001088"),
-		TxChainBatcherAddresses: []BatcherAddressAtHeight{
-			{
-				Height:  0,
-				Address: common.HexToAddress("0x1A9da0aedA630dDf2748a453BF6d92560762D914"),
-			},
-		},
-		BlobBatcherAddresses: []BatcherAddressAtHeight{
-			{
-				Height:  0,
-				Address: common.HexToAddress("0x1A9da0aedA630dDf2748a453BF6d92560762D914"),
-			},
-		},
-	}
-)
+var l2ChainNamesByChainID = map[uint64]string{
+	59902: "metis-sepolia",
+	1088:  "metis-andromeda",
+}
 
 var l2ChainConfigsByChainID = map[uint64]*params.ChainConfig{
-	59902: MetisAndromedaChainConfig,
-	1088:  MetisSepoliaChainConfig,
+	59902: MetisSepoliaChainConfig,
+	1088:  MetisAndromedaChainConfig,
 }
 
 var l2RollupConfigsByChainID = map[uint64]*RollupConfig{
@@ -144,4 +113,12 @@ func ChainConfigByChainID(chainID uint64) (*params.ChainConfig, error) {
 	}
 
 	return chainCfg, nil
+}
+
+func AvailableNetworks() []string {
+	networks := make([]string, 0, len(l2ChainNamesByChainID))
+	for _, name := range l2ChainNamesByChainID {
+		networks = append(networks, name)
+	}
+	return networks
 }

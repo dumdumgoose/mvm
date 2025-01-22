@@ -18,7 +18,7 @@ func TestKonaFillHostCommand(t *testing.T) {
 		L1Beacon: "http://localhost:9000",
 		L2:       "http://localhost:9999",
 		Server:   "./bin/mockserver",
-		Network:  "op-mainnet",
+		Network:  "metis-sepolia",
 	}
 	inputs := utils.LocalGameInputs{
 		L1Head:        common.Hash{0x11},

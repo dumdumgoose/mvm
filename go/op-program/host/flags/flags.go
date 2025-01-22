@@ -6,11 +6,12 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	service "github.com/ethereum-optimism/optimism/op-service"
 	openum "github.com/ethereum-optimism/optimism/op-service/enum"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
+
+	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
 )
 
 const EnvVarPrefix = "OP_PROGRAM"
@@ -33,7 +34,7 @@ var (
 	}
 	Network = &cli.StringFlag{
 		Name:    "network",
-		Usage:   fmt.Sprintf("Predefined network selection. Available networks: %s", strings.Join(chaincfg.AvailableNetworks(), ", ")),
+		Usage:   fmt.Sprintf("Predefined network selection. Available networks: %s", strings.Join(chainconfig.AvailableNetworks(), ", ")),
 		EnvVars: prefixEnvVars("NETWORK"),
 	}
 	DataDir = &cli.StringFlag{

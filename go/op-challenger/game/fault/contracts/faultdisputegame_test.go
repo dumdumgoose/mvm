@@ -6,21 +6,17 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"math/rand"
 	"slices"
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	batchingTest "github.com/ethereum-optimism/optimism/op-service/sources/batching/test"
-	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/snapshots"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 
 	contractMetrics "github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/contracts/metrics"
@@ -741,48 +737,6 @@ func TestFaultDisputeGameContractLatest_IsL2BlockNumberChallenged(t *testing.T) 
 				require.Equal(t, expected, challenged)
 			})
 		}
-	}
-}
-
-func TestFaultDisputeGameContractLatest_ChallengeL2BlockNumberTx(t *testing.T) {
-	for _, version := range versions {
-		version := version
-		t.Run(version.version, func(t *testing.T) {
-			rng := rand.New(rand.NewSource(0))
-			stubRpc, game := setupFaultDisputeGameTest(t, version)
-			challenge := &faultTypes.InvalidL2BlockNumberChallenge{
-				Output: &eth.OutputResponse{
-					Version:               eth.Bytes32{},
-					OutputRoot:            eth.Bytes32{0xaa},
-					BlockRef:              eth.L2BlockRef{Hash: common.Hash{0xbb}},
-					WithdrawalStorageRoot: common.Hash{0xcc},
-					StateRoot:             common.Hash{0xdd},
-				},
-				Header: testutils.RandomHeader(rng),
-			}
-			supportsL2BlockNumChallenge := version.version != vers080 && version.version != vers0180
-			if supportsL2BlockNumChallenge {
-				headerRlp, err := rlp.EncodeToBytes(challenge.Header)
-				require.NoError(t, err)
-				stubRpc.SetResponse(fdgAddr, methodChallengeRootL2Block, rpcblock.Latest, []interface{}{
-					outputRootProof{
-						Version:                  challenge.Output.Version,
-						StateRoot:                challenge.Output.StateRoot,
-						MessagePasserStorageRoot: challenge.Output.WithdrawalStorageRoot,
-						LatestBlockhash:          challenge.Output.BlockRef.Hash,
-					},
-					headerRlp,
-				}, nil)
-			}
-			tx, err := game.ChallengeL2BlockNumberTx(challenge)
-			if supportsL2BlockNumChallenge {
-				require.NoError(t, err)
-				stubRpc.VerifyTxCandidate(tx)
-			} else {
-				require.ErrorIs(t, err, ErrChallengeL2BlockNotSupported)
-				require.Equal(t, txmgr.TxCandidate{}, tx)
-			}
-		})
 	}
 }
 

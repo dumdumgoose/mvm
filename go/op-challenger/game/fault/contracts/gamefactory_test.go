@@ -15,6 +15,7 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
+	override "github.com/ethereum-optimism/optimism/go/op-challenger/abi"
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/contracts/metrics"
 	faultTypes "github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/types"
@@ -285,15 +286,14 @@ func expectGetGame(stubRpc *batchingTest.AbiBasedRpc, idx int, blockHash common.
 		})
 }
 
-func TestCreateTx(t *testing.T) {
+func TestCreateDisputeTx(t *testing.T) {
 	stubRpc, factory := setupDisputeGameFactoryTest(t)
 	traceType := uint32(123)
-	outputRoot := common.Hash{0x01}
 	l2BlockNum := common.BigToHash(big.NewInt(456)).Bytes()
 	bond := big.NewInt(49284294829)
 	stubRpc.SetResponse(factoryAddr, methodInitBonds, rpcblock.Latest, []interface{}{traceType}, []interface{}{bond})
-	stubRpc.SetResponse(factoryAddr, methodCreateGame, rpcblock.Latest, []interface{}{traceType, outputRoot, l2BlockNum}, nil)
-	tx, err := factory.CreateTx(context.Background(), traceType, outputRoot, uint64(456))
+	stubRpc.SetResponse(factoryAddr, methodCreateDispute, rpcblock.Latest, []interface{}{traceType, l2BlockNum}, nil)
+	tx, err := factory.CreateDisputeTx(context.Background(), traceType, uint64(456))
 	require.NoError(t, err)
 	stubRpc.VerifyTxCandidate(tx)
 	require.NotNil(t, tx.Value)
@@ -301,10 +301,10 @@ func TestCreateTx(t *testing.T) {
 }
 
 func setupDisputeGameFactoryTest(t *testing.T) (*batchingTest.AbiBasedRpc, *DisputeGameFactoryContract) {
-	fdgAbi := snapshots.LoadDisputeGameFactoryABI()
+	fdgAbi := override.LoadDisputeGameFactoryABI()
 
 	stubRpc := batchingTest.NewAbiBasedRpc(t, factoryAddr, fdgAbi)
 	caller := batching.NewMultiCaller(stubRpc, batchSize)
-	factory := NewDisputeGameFactoryContract(metrics.NoopContractMetrics, factoryAddr, caller)
+	factory := NewDisputeGameFactoryContract(metrics.NoopContractMetrics, factoryAddr, caller, common.Address{})
 	return stubRpc, factory
 }

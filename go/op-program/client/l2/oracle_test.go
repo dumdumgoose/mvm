@@ -13,10 +13,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
-	"github.com/ethereum-optimism/optimism/go/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+
+	l2common "github.com/MetisProtocol/mvm/l2geth/common"
+	preimage "github.com/ethereum-optimism/optimism/go/op-preimage"
+	"github.com/ethereum-optimism/optimism/go/op-program/client/mpt"
 )
 
 func mockPreimageOracle(t *testing.T) (po *PreimageOracle, hintsMock *mock.Mock, preimages map[common.Hash][]byte) {
@@ -59,7 +61,7 @@ func testBlock(t *testing.T, block *types.Block) {
 	// Check if blocks with txs work
 	hints.On("hint", BlockHeaderHint(block.Hash()).Hint()).Once().Return()
 	hints.On("hint", TransactionsHint(block.Hash()).Hint()).Once().Return()
-	gotBlock := po.BlockByHash(block.Hash())
+	gotBlock := po.BlockByHash(l2common.Hash(block.Hash()))
 	hints.AssertExpectations(t)
 
 	require.Equal(t, gotBlock.Hash(), block.Hash())
@@ -95,7 +97,7 @@ func TestPreimageOracleNodeByHash(t *testing.T) {
 			preimages[preimage.Keccak256Key(h).PreimageKey()] = node
 
 			hints.On("hint", StateNodeHint(h).Hint()).Once().Return()
-			gotNode := po.NodeByHash(h)
+			gotNode := po.NodeByHash(l2common.Hash(h))
 			hints.AssertExpectations(t)
 			require.Equal(t, hexutil.Bytes(node), hexutil.Bytes(gotNode), "node matches")
 		})
@@ -116,27 +118,9 @@ func TestPreimageOracleCodeByHash(t *testing.T) {
 			preimages[preimage.Keccak256Key(h).PreimageKey()] = node
 
 			hints.On("hint", CodeHint(h).Hint()).Once().Return()
-			gotNode := po.CodeByHash(h)
+			gotNode := po.CodeByHash(l2common.Hash(h))
 			hints.AssertExpectations(t)
 			require.Equal(t, hexutil.Bytes(node), hexutil.Bytes(gotNode), "code matches")
-		})
-	}
-}
-
-func TestPreimageOracleOutputByRoot(t *testing.T) {
-	rng := rand.New(rand.NewSource(123))
-
-	for i := 0; i < 10; i++ {
-		t.Run(fmt.Sprintf("output_%d", i), func(t *testing.T) {
-			po, hints, preimages := mockPreimageOracle(t)
-			output := testutils.RandomOutputV0(rng)
-
-			h := common.Hash(eth.OutputRoot(output))
-			preimages[preimage.Keccak256Key(h).PreimageKey()] = output.Marshal()
-			hints.On("hint", L2OutputHint(h).Hint()).Once().Return()
-			gotOutput := po.OutputByRoot(h)
-			hints.AssertExpectations(t)
-			require.Equal(t, hexutil.Bytes(output.Marshal()), hexutil.Bytes(gotOutput.Marshal()), "output matches")
 		})
 	}
 }

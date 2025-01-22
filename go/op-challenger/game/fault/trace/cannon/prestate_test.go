@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	l2common "github.com/MetisProtocol/mvm/l2geth/common"
 	"github.com/ethereum-optimism/optimism/go/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/go/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/go/cannon/mipsevm/singlethreaded"
@@ -45,7 +46,7 @@ func TestAbsolutePreStateCommitment(t *testing.T) {
 		require.NoError(t, err)
 		state := singlethreaded.State{
 			Memory:         memory.NewMemory(),
-			PreimageKey:    common.HexToHash("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"),
+			PreimageKey:    l2common.Hash(common.HexToHash("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")),
 			PreimageOffset: 0,
 			Cpu: mipsevm.CpuScalars{
 				PC:     0,
@@ -60,7 +61,7 @@ func TestAbsolutePreStateCommitment(t *testing.T) {
 			Registers: [32]uint32{},
 		}
 		_, expected := state.EncodeWitness()
-		require.Equal(t, expected, actual)
+		require.Equal(t, expected.Hex(), actual.Hex())
 	})
 
 	t.Run("CacheAbsolutePreState", func(t *testing.T) {

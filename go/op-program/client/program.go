@@ -789,7 +789,7 @@ func deriveL2States(logger log.Logger,
 
 		// Set head
 		if _, err := l2Chain.SetCanonical(block); err != nil {
-			return nil, fmt.Errorf("failed to set canonical block %d: %w", block, err)
+			return nil, fmt.Errorf("failed to set canonical block %d: %w", block.Number().Uint64(), err)
 		}
 
 		logger.Debug("Canonical block set", "block", block.Number().Uint64())

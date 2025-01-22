@@ -4,17 +4,18 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
+
+	"github.com/MetisProtocol/mvm/l2geth/params"
+
+	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
 )
 
 var (
-	validRollupConfig    = chaincfg.Sepolia
-	validL2Genesis       = chainconfig.OPSepoliaChainConfig
+	validRollupConfig    = chainconfig.MetisSepoliaRollupConfig
+	validL2Genesis       = chainconfig.MetisSepoliaChainConfig
 	validL1Head          = common.Hash{0xaa}
 	validL2Head          = common.Hash{0xbb}
 	validL2Claim         = common.Hash{0xcc}
@@ -38,7 +39,7 @@ func TestRollupConfig(t *testing.T) {
 
 	t.Run("Invalid", func(t *testing.T) {
 		config := validConfig()
-		config.Rollup = &rollup.Config{}
+		config.Rollup = &chainconfig.RollupConfig{}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
 	})

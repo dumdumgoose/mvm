@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -15,31 +14,6 @@ import (
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/trace"
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/types"
 )
-
-func TestCalculateNextActions_ChallengeL2BlockNumber(t *testing.T) {
-	startingBlock := big.NewInt(5)
-	maxDepth := types.Depth(6)
-	challenge := &types.InvalidL2BlockNumberChallenge{
-		Output: &eth.OutputResponse{OutputRoot: eth.Bytes32{0xbb}},
-	}
-	claimBuilder := faulttest.NewAlphabetClaimBuilder(t, startingBlock, maxDepth)
-	traceProvider := faulttest.NewAlphabetWithProofProvider(t, startingBlock, maxDepth, nil)
-	solver := NewGameSolver(maxDepth, trace.NewSimpleTraceAccessor(traceProvider))
-
-	// Do not challenge when provider returns error indicating l2 block is valid
-	actions, err := solver.CalculateNextActions(context.Background(), claimBuilder.GameBuilder().Game)
-	require.NoError(t, err)
-	require.Len(t, actions, 0)
-
-	// Do challenge when the provider returns a challenge
-	traceProvider.L2BlockChallenge = challenge
-	actions, err = solver.CalculateNextActions(context.Background(), claimBuilder.GameBuilder().Game)
-	require.NoError(t, err)
-	require.Len(t, actions, 1)
-	action := actions[0]
-	require.Equal(t, types.ActionTypeChallengeL2BlockNumber, action.Type)
-	require.Equal(t, challenge, action.InvalidL2BlockNumberChallenge)
-}
 
 func TestCalculateNextActions(t *testing.T) {
 	maxDepth := types.Depth(6)

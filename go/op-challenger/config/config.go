@@ -8,7 +8,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum-optimism/optimism/go/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/go/op-program/chainconfig"
 )
 
 var (
@@ -119,6 +119,7 @@ type Config struct {
 
 func NewConfig(
 	gameFactoryAddress common.Address,
+	sccAddress common.Address,
 	l1EthRpc string,
 	l1BeaconApi string,
 	l2RollupRpc string,
@@ -144,8 +145,13 @@ func NewConfig(
 		MetricsConfig: opmetrics.DefaultCLIConfig(),
 		PprofConfig:   oppprof.DefaultCLIConfig(),
 
+		SCCAddress:      sccAddress,
 		Datadir:         datadir,
 		GameCreatorMode: gameCreatorMode,
+
+		L1StartBlock:          1,
+		SyncInterval:          time.Second * 6,
+		GameCreationTraceType: types.TraceTypeCannon,
 
 		Cannon: vm.Config{
 			VmType:       types.TraceTypeCannon,
@@ -229,7 +235,7 @@ func (c Config) Check() error {
 			if c.Cannon.L2GenesisPath != "" {
 				return ErrCannonNetworkAndL2Genesis
 			}
-			if ch := chaincfg.ChainByName(c.Cannon.Network); ch == nil {
+			if ch := chainconfig.ChainByName(c.Cannon.Network); ch == nil {
 				return fmt.Errorf("%w: %v", ErrCannonNetworkUnknown, c.Cannon.Network)
 			}
 		}
@@ -267,7 +273,7 @@ func (c Config) Check() error {
 			if c.Asterisc.L2GenesisPath != "" {
 				return ErrAsteriscNetworkAndL2Genesis
 			}
-			if ch := chaincfg.ChainByName(c.Asterisc.Network); ch == nil {
+			if ch := chainconfig.ChainByName(c.Asterisc.Network); ch == nil {
 				return fmt.Errorf("%w: %v", ErrAsteriscNetworkUnknown, c.Asterisc.Network)
 			}
 		}

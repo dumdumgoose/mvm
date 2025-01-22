@@ -1,25 +1,22 @@
 package l2
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/go/op-program/client/l2/test"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/tracing"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/triedb"
-	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
+
+	"github.com/MetisProtocol/mvm/l2geth/common"
+	"github.com/MetisProtocol/mvm/l2geth/core"
+	"github.com/MetisProtocol/mvm/l2geth/core/rawdb"
+	"github.com/MetisProtocol/mvm/l2geth/core/state"
+	"github.com/MetisProtocol/mvm/l2geth/core/types"
+	"github.com/MetisProtocol/mvm/l2geth/crypto"
+	l2db "github.com/MetisProtocol/mvm/l2geth/ethdb"
+	"github.com/MetisProtocol/mvm/l2geth/ethdb/memorydb"
+	"github.com/MetisProtocol/mvm/l2geth/params"
+	"github.com/ethereum-optimism/optimism/go/op-program/client/l2/test"
 )
 
 var (
@@ -27,9 +24,6 @@ var (
 	codeAccount    = common.HexToAddress("0x2222")
 	unknownAccount = common.HexToAddress("0x3333")
 )
-
-// Should implement the KeyValueStore API
-var _ ethdb.KeyValueStore = (*OracleKeyValueStore)(nil)
 
 func TestGet(t *testing.T) {
 	t.Run("IncorrectLengthKey", func(t *testing.T) {
@@ -44,7 +38,7 @@ func TestGet(t *testing.T) {
 		oracle := test.NewStubStateOracle(t)
 		db := NewOracleBackedDB(oracle)
 		key := common.HexToHash("0x12345678")
-		prefixedKey := append(rawdb.CodePrefix, key.Bytes()...)
+		prefixedKey := key.Bytes()
 
 		expected := []byte{1, 2, 3}
 		oracle.Code[key] = expected
@@ -58,8 +52,6 @@ func TestGet(t *testing.T) {
 		oracle := test.NewStubStateOracle(t)
 		db := NewOracleBackedDB(oracle)
 		key := make([]byte, common.HashLength)
-		copy(rawdb.CodePrefix, key)
-		fmt.Println(key[0])
 		expected := []byte{1, 2, 3}
 		oracle.Data[common.BytesToHash(key)] = expected
 		val, err := db.Get(key)
@@ -113,8 +105,7 @@ func TestPut(t *testing.T) {
 func TestSupportsStateDBOperations(t *testing.T) {
 	l2Genesis := createGenesis()
 	realDb := rawdb.NewDatabase(memorydb.New())
-	trieDB := triedb.NewDatabase(realDb, &triedb.Config{HashDB: hashdb.Defaults})
-	genesisBlock := l2Genesis.MustCommit(realDb, trieDB)
+	genesisBlock := l2Genesis.MustCommit(realDb)
 
 	loader := test.NewKvStateOracle(t, realDb)
 	assertStateDataAvailable(t, NewOracleBackedDB(loader), l2Genesis, genesisBlock)
@@ -125,35 +116,32 @@ func TestUpdateState(t *testing.T) {
 	oracle := test.NewStubStateOracle(t)
 	db := rawdb.NewDatabase(NewOracleBackedDB(oracle))
 
-	trieDB := triedb.NewDatabase(db, &triedb.Config{HashDB: hashdb.Defaults})
-	genesisBlock := l2Genesis.MustCommit(db, trieDB)
+	genesisBlock := l2Genesis.MustCommit(db)
 	assertStateDataAvailable(t, db, l2Genesis, genesisBlock)
 
-	statedb, err := state.New(genesisBlock.Root(), state.NewDatabase(rawdb.NewDatabase(db)), nil)
+	statedb, err := state.New(genesisBlock.Root(), state.NewDatabase(rawdb.NewDatabase(db)))
 	require.NoError(t, err)
-	statedb.MakeSinglethreaded()
-	statedb.SetBalance(userAccount, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
-	require.Equal(t, uint256.NewInt(50), statedb.GetBalance(userAccount))
+	statedb.SetBalance(userAccount, big.NewInt(50))
+	require.Equal(t, big.NewInt(50), statedb.GetBalance(userAccount))
 	statedb.SetNonce(userAccount, uint64(5))
 	require.Equal(t, uint64(5), statedb.GetNonce(userAccount))
 
-	statedb.SetBalance(unknownAccount, uint256.NewInt(60), tracing.BalanceChangeUnspecified)
-	require.Equal(t, uint256.NewInt(60), statedb.GetBalance(unknownAccount))
+	statedb.SetBalance(unknownAccount, big.NewInt(60))
+	require.Equal(t, big.NewInt(60), statedb.GetBalance(unknownAccount))
 	statedb.SetCode(codeAccount, []byte{1})
 	require.Equal(t, []byte{1}, statedb.GetCode(codeAccount))
 
 	// Changes should be available under the new state root after committing
-	newRoot, err := statedb.Commit(genesisBlock.NumberU64()+1, false)
+	newRoot, err := statedb.Commit(false)
 	require.NoError(t, err)
 	err = statedb.Database().TrieDB().Commit(newRoot, true)
 	require.NoError(t, err)
 
-	statedb, err = state.New(newRoot, state.NewDatabase(rawdb.NewDatabase(db)), nil)
+	statedb, err = state.New(newRoot, state.NewDatabase(rawdb.NewDatabase(db)))
 	require.NoError(t, err)
-	statedb.MakeSinglethreaded()
-	require.Equal(t, uint256.NewInt(50), statedb.GetBalance(userAccount))
+	require.Equal(t, big.NewInt(50), statedb.GetBalance(userAccount))
 	require.Equal(t, uint64(5), statedb.GetNonce(userAccount))
-	require.Equal(t, uint256.NewInt(60), statedb.GetBalance(unknownAccount))
+	require.Equal(t, big.NewInt(60), statedb.GetBalance(unknownAccount))
 	require.Equal(t, []byte{1}, statedb.GetCode(codeAccount))
 }
 
@@ -162,8 +150,7 @@ func createGenesis() *core.Genesis {
 		Config:     &params.ChainConfig{},
 		Difficulty: common.Big0,
 		ParentHash: common.Hash{},
-		BaseFee:    big.NewInt(7),
-		Alloc: map[common.Address]types.Account{
+		Alloc: map[common.Address]core.GenesisAccount{
 			userAccount: {
 				Balance: big.NewInt(1_000_000_000_000_000_000),
 				Nonce:   10,
@@ -182,8 +169,8 @@ func createGenesis() *core.Genesis {
 	return l2Genesis
 }
 
-func assertStateDataAvailable(t *testing.T, db ethdb.KeyValueStore, l2Genesis *core.Genesis, genesisBlock *types.Block) {
-	statedb, err := state.New(genesisBlock.Root(), state.NewDatabase(rawdb.NewDatabase(db)), nil)
+func assertStateDataAvailable(t *testing.T, db l2db.KeyValueStore, l2Genesis *core.Genesis, genesisBlock *types.Block) {
+	statedb, err := state.New(genesisBlock.Root(), state.NewDatabase(rawdb.NewDatabase(db)))
 	require.NoError(t, err)
 
 	for address, account := range l2Genesis.Alloc {
@@ -196,7 +183,7 @@ func assertStateDataAvailable(t *testing.T, db ethdb.KeyValueStore, l2Genesis *c
 		}
 	}
 	require.Equal(t, common.Hash{}, statedb.GetState(codeAccount, common.HexToHash("0x99")), "retrieve unset storage key")
-	require.Equal(t, common.U2560, statedb.GetBalance(unknownAccount), "unset account balance")
+	require.Equal(t, uint256.NewInt(0), statedb.GetBalance(unknownAccount), "unset account balance")
 	require.Equal(t, uint64(0), statedb.GetNonce(unknownAccount), "unset account balance")
 	require.Nil(t, statedb.GetCode(unknownAccount), "unset account code")
 	require.Equal(t, common.Hash{}, statedb.GetCodeHash(unknownAccount), "unset account code hash")

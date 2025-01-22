@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-//go:build !cgo
-// +build !cgo
-
 package metrics
 
 // CPUStats is the system and process CPU stats.
@@ -24,12 +21,4 @@ type CPUStats struct {
 	GlobalTime int64 // Time spent by the CPU working on all processes
 	GlobalWait int64 // Time spent by waiting on disk for all processes
 	LocalTime  int64 // Time spent by the CPU working on this process
-}
-
-// Note: go sigar is written in pure cgo, we cannot retrieve CPU stats without cgo.
-// ReadCPUStats retrieves the current CPU stats.
-func ReadCPUStats(stats *CPUStats) {
-	stats.GlobalTime = 0
-	stats.GlobalWait = 0
-	stats.LocalTime = 0
 }
