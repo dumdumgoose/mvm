@@ -3,11 +3,9 @@ package testutil
 import (
 	"os"
 
-	"github.com/MetisProtocol/mvm/l2geth/log"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 func CreateLogger() log.Logger {
-	logger := log.New()
-	logger.SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
-	return logger
+	return log.NewLogger(log.LogfmtHandlerWithLevel(os.Stdout, log.LevelInfo))
 }
