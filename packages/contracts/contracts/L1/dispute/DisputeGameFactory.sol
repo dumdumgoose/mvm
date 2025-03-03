@@ -107,14 +107,6 @@ contract DisputeGameFactory is OwnableUpgradeable, IDisputeGameFactory, ISemver 
         // Check if sender has enough balance
         IERC20 metis = METIS;
         if (initBond > 0) {
-            if (metis.balanceOf(msg.sender) < initBond) {
-                revert InsufficientBalance();
-            }
-
-            if (metis.allowance(msg.sender, address(this)) < initBond) {
-                revert InsufficientAllowance();
-            }
-
             // Transfer the bond from the sender to this contract
             metis.transferFrom(msg.sender, address(this), initBond);
         }
