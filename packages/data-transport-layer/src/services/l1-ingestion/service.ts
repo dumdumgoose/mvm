@@ -1,7 +1,6 @@
 /* Imports: External */
-import { FallbackProvider, fromHexString } from '@metis.io/core-utils'
 import { BaseService, Metrics } from '@eth-optimism/common-ts'
-import { LevelUp } from 'levelup'
+import { FallbackProvider, fromHexString } from '@metis.io/core-utils'
 import {
   Block,
   ethers,
@@ -10,6 +9,7 @@ import {
   toNumber,
   TransactionResponse,
 } from 'ethersv6'
+import { LevelUp } from 'levelup'
 import { Counter, Gauge } from 'prom-client'
 
 /* Imports: Internal */
@@ -19,6 +19,12 @@ import {
   TransportDBMapHolder,
 } from '../../db/transport-db'
 import {
+  EventHandlerSet,
+  EventHandlerSetAny,
+  SenderType,
+  TypedEthersEvent,
+} from '../../types'
+import {
   addressEvent,
   loadContract,
   loadOptimismContracts,
@@ -26,21 +32,15 @@ import {
   sleep,
   validators,
 } from '../../utils'
-import {
-  EventHandlerSet,
-  EventHandlerSetAny,
-  SenderType,
-  TypedEthersEvent,
-} from '../../types'
-import { handleEventsTransactionEnqueued } from './handlers/transaction-enqueued'
-import { handleEventsSequencerBatchAppended } from './handlers/sequencer-batch-appended'
-import { handleEventsStateBatchAppended } from './handlers/state-batch-appended'
 import { L1DataTransportServiceOptions } from '../main/service'
-import { MissingElementError } from './handlers/errors'
-import { handleEventsVerifierStake } from './handlers/verifier-stake'
 import { handleEventsAppendBatchElement } from './handlers/append-batch-element'
-import { handleEventsSequencerBatchInbox } from './handlers/sequencer-batch-inbox'
+import { MissingElementError } from './handlers/errors'
 import { handleInboxSenderSet } from './handlers/inbox-sender-set'
+import { handleEventsSequencerBatchAppended } from './handlers/sequencer-batch-appended'
+import { handleEventsSequencerBatchInbox } from './handlers/sequencer-batch-inbox'
+import { handleEventsStateBatchAppended } from './handlers/state-batch-appended'
+import { handleEventsTransactionEnqueued } from './handlers/transaction-enqueued'
+import { handleEventsVerifierStake } from './handlers/verifier-stake'
 
 interface L1IngestionMetrics {
   highestSyncedL1Block: Gauge<string>
@@ -231,10 +231,11 @@ export class L1IngestionService extends BaseService<L1IngestionServiceOptions> {
     let startingL1BatchIndex = await this.state.db.getStartingL1BatchIndex()
     if (startingL1BatchIndex === null || startingL1BatchIndex === undefined) {
       // get from contract
-      startingL1BatchIndex =
+      startingL1BatchIndex = toNumber(
         await this.state.contracts.CanonicalTransactionChain.getTotalBatchesByChainId(
           this.options.l2ChainId
         )
+      )
       this.state.startingL1BatchIndex = toNumber(startingL1BatchIndex)
       await this.state.db.setStartingL1BatchIndex(
         this.state.startingL1BatchIndex
@@ -245,8 +246,9 @@ export class L1IngestionService extends BaseService<L1IngestionServiceOptions> {
 
     // Store the total number of submitted transactions so the server can tell clients if we're
     // done syncing or not
-    const totalElements =
+    const totalElements = toNumber(
       await this.state.contracts.CanonicalTransactionChain.getTotalElements()
+    )
     if (totalElements > 0) {
       await this.state.db.putHighestL2BlockNumber(totalElements - 1)
     }
